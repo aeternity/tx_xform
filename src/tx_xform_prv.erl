@@ -73,10 +73,12 @@ generate(Dirs, OutF) ->
     case find(Dirs) of
         [_|_] = Found ->
             Forms = [{attribute, 1, module, Mod},
-                     {attribute, 3, export, [{handler, 1}]}]
-                ++ lists:flatten([Rdef || {_, _, {_, Rdef}} <- Found])
+                {attribute, 3, export, [{handler, 1}, {handler_by_type, 1}]}]
+                ++ lists:flatten([Rdef || {_, _, {_, Rdef}, _} <- Found])
                 ++ [{function, 50, handler, 1,
-                     clauses(Found, 50)}],
+                    clauses(Found, 50)}]
+                ++ [{function, 100, handler_by_type, 1,
+                    type_clauses(Found, 100)}],
             case compile:forms(Forms, [report_errors, report_warnings]) of
                 error ->
                     {error, Found};
@@ -101,13 +103,30 @@ pp(Forms, F) ->
 
 clauses(Found, L0) ->
     {Cs, _} = lists:mapfoldl(
-                fun({Mod, _, {RecName, _}}, L) ->
+                fun({Mod, _, {RecName, _}, _}, L) ->
                         {{clause, L, [{record, L, RecName, []}],
                           [],
                           [{atom, L+1, Mod}]},
                          L+2}
                 end, L0, Found),
     Cs.
+
+type_clauses(Found, L0) ->
+    {Cs, _} = lists:mapfoldl(
+                fun({Mod, _, _, Str}, L) ->
+                  case Str of
+                    {error, Err} ->
+                        rebar_api:error("Error in ~p: ~p", [Mod, Err]),
+                        {{error, Err}, L + 1};
+                    _ ->
+                        {{clause, L, write_binary(Str, L),
+                          [],
+                          [{atom, L+1, Mod}]},
+                          L+2}
+                  end
+                end, L0, Found),
+    Cs.
+
 
 find_beams(D, Acc) ->
     filelib:fold_files(
@@ -117,7 +136,8 @@ find_beams(D, Acc) ->
                   {ok, {Mod, [{attributes, As}, Abst]}} ->
                       case lists:member({behavior, [aec_tx]}, As)
                           orelse lists:member({behaviour, [aec_tx]}, As) of
-                          true  -> [{Mod, F, rec_type(Abst)} | A];
+                          true  -> [{Mod, F, rec_type(Abst),
+                                     transaction_type(Abst)} | A];
                           false -> A
                       end;
                   _ ->
@@ -191,3 +211,21 @@ user_type(Type, As) ->
         [UserType] ->
             UserType
     end.
+
+transaction_type({abstract_code, {raw_abstract_v1, As}}) ->
+    case [T || {function,_,type,0,T} <- As] of 
+        [[{clause, _, _, _, R}]] ->
+            read_binary(R);
+        OtherT ->
+            {error, [?LINE, OtherT]}
+    end.
+
+read_binary([{bin,_, [{bin_element,_, {string,_,Str},
+                                                default,default}]}]) ->
+    Str;
+read_binary(_) ->
+  {error, [?LINE, type_not_binary]}.
+
+write_binary(Str, L) ->
+    [{bin,L, [{bin_element,L, {string,L,Str}, default,default}]}].
+
