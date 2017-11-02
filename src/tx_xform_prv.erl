@@ -149,6 +149,17 @@ rec_type({abstract_code, {raw_abstract_v1, As}}) ->
     Rec =
         case [T || {attribute,_,spec,{{new,2},T}} <- As] of 
             [[{type,_,'fun',
+               [_In, {type,_,union,
+                   [{type,_,tuple,[{atom,_,ok},RecType]},_ErrorClause]}]}]] ->
+                case RecType of
+                    {user_type,_,UType,[]} ->
+                        recname_from_user_type(UType, As);
+                    {type,_,record,[{atom,_,RecName}]} ->
+                        RecName;
+                    Other ->
+                        {error, [?LINE, Other]}
+                end;
+            [[{type,_,'fun',
                [_In, {type,_,tuple,[{atom,_,ok},RecType]}]}]] ->
                 case RecType of
                     {user_type,_,UType,[]} ->
