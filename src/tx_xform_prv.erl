@@ -147,7 +147,7 @@ find_beams(D, Acc) ->
 
 rec_type({abstract_code, {raw_abstract_v1, As}}) ->
     Rec =
-        case [T || {attribute,_,spec,{{new,2},T}} <- As] of 
+        case [T || {attribute,_,spec,{{new,1},T}} <- As] of
             [[{type,_,'fun',
                [_In, {type,_,union,
                    [{type,_,tuple,[{atom,_,ok},RecType]},_ErrorClause]}]}]] ->
