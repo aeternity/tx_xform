@@ -27,12 +27,12 @@ init(State) ->
 
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
-    rebar_api:info("Generating aec_tx mapping module ...~n", []),
+    rebar_api:info("Generating aetx mapping module ...~n", []),
     ProjApps = rebar_state:project_apps(State),
     Opts = rebar_state:get(State, tx_xform_opts, []),
     {Outfile, InApp} =
         out_file(
-          proplists:get_value(out_file, Opts, "aecore/src/txs/aec_tx_handlers.erl"),
+          proplists:get_value(out_file, Opts, "aecore/src/txs/aetx_handlers.erl"),
           ProjApps),
     rebar_api:debug("Outfile = ~p~n", [Outfile]),
     ok = filelib:ensure_dir(Outfile),
@@ -87,7 +87,7 @@ generate(Dirs, OutF) ->
                     Ok
             end;
         [] ->
-            rebar_api:info("No aec_tx behaviors found", [])
+            rebar_api:info("No aetx behaviors found", [])
     end.
 
 pp(Forms, F) ->
@@ -134,8 +134,8 @@ find_beams(D, Acc) ->
       fun(F, A) ->
               case beam_lib:chunks(F, [attributes, abstract_code]) of
                   {ok, {Mod, [{attributes, As}, Abst]}} ->
-                      case lists:member({behavior, [aec_tx]}, As)
-                          orelse lists:member({behaviour, [aec_tx]}, As) of
+                      case lists:member({behavior, [aetx]}, As)
+                          orelse lists:member({behaviour, [aetx]}, As) of
                           true  -> [{Mod, F, rec_type(Abst),
                                      transaction_type(Abst)} | A];
                           false -> A
